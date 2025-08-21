@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<robot name="sofa">
+  <link name="sofa_link">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <visual>
+      <geometry>
+        <mesh filename="sofa.obj" scale="1 1 1"/>
+      </geometry>
+      <material name="sofa_material">
+        <texture filename="/home/mrs/下载/IsaacGym_Preview_4_Package/unitree_rl_gym/test/sofa/textures/Archisketch_BOLIA_Frame_Gray_baseColor.png"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="sofa.obj" scale="1 1 1"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>

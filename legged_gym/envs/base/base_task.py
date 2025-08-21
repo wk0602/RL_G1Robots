@@ -9,6 +9,7 @@ import torch
 class BaseTask():
 
     def __init__(self, cfg, sim_params, physics_engine, sim_device, headless):
+        # 创建仿真器对象
         self.gym = gymapi.acquire_gym()
 
         self.sim_params = sim_params
@@ -28,9 +29,13 @@ class BaseTask():
         if self.headless == True:
             self.graphics_device_id = -1
 
+        # 环境数量
         self.num_envs = cfg.env.num_envs
+        # 观测数量
         self.num_obs = cfg.env.num_observations
+        # 特权观测数量
         self.num_privileged_obs = cfg.env.num_privileged_obs
+        # 动作数量
         self.num_actions = cfg.env.num_actions
 
         # optimization flags for pytorch JIT
