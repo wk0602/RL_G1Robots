@@ -7,7 +7,9 @@ import torch
 import numpy as np
 
 class TestG1Robot(LeggedRobot):
-    
+    def _create_envs(self):
+        
+        return super()._create_envs()
     def _get_noise_scale_vec(self, cfg):
         """ Sets a vector used to scale the noise added to the observations.
             [NOTE]: Must be adapted when changing the observations structure
@@ -190,11 +192,11 @@ class TestG1Robot(LeggedRobot):
             # 在不同的地形类型中分布机器人（不同的列）
             self.terrain_types = torch.div(
                 torch.arange(self.num_envs, device=self.device), 
-                (self.num_envs / self.cfg.terrain.num_cols), 
+                (self.num_envs / self.terrain.cfg.num_cols), 
                 rounding_mode='floor'
             ).to(torch.long)
             
-            self.max_terrain_level = self.cfg.terrain.num_rows
+            self.max_terrain_level = self.terrain.cfg.num_rows
             self.terrain_origins = torch.from_numpy(self.terrain.env_origins).to(self.device).to(torch.float)
             
             # 设置环境原点坐标
@@ -203,7 +205,7 @@ class TestG1Robot(LeggedRobot):
             self.env_origins[:, 2] = self.terrain_origins[self.terrain_levels, self.terrain_types, 2]
             
             print(f"✅ 所有 {self.num_envs} 个机器人都从最简单的地形开始 (terrain_level=0)")
-            print(f"📊 地形类型分布: {torch.bincount(self.terrain_types)}")
+            print(f" 地形类型分布: {torch.bincount(self.terrain_types)}")
         else:
             # 如果没有地形，使用默认的网格布局
             self.custom_origins = False
@@ -212,4 +214,26 @@ class TestG1Robot(LeggedRobot):
                 self.env_origins[i, 0] = (i % self.num_envs_per_row) * self.cfg.env.env_spacing
                 self.env_origins[i, 1] = (i // self.num_envs_per_row) * self.cfg.env.env_spacing
                 self.env_origins[i, 2] = 0.
+
+    def _create_terrain(self):
+        # 使用 challenging_terrain 生成三角网格地形并添加到仿真
+        from challenging_terrain.terrain_base import Terrain as ChallengingTerrain
+        
+        self.terrain = ChallengingTerrain(self.num_envs)
+        
+        tm_params = gymapi.TriangleMeshParams()
+        tm_params.nb_vertices = self.terrain.vertices.shape[0]
+        tm_params.nb_triangles = self.terrain.triangles.shape[0]
+
+        tm_params.transform.p.x = -self.terrain.cfg.border_size 
+        tm_params.transform.p.y = -self.terrain.cfg.border_size
+        tm_params.transform.p.z = 0.0
+        tm_params.static_friction = self.cfg.terrain.static_friction
+        tm_params.dynamic_friction = self.cfg.terrain.dynamic_friction
+        tm_params.restitution = self.cfg.terrain.restitution
+        print("Adding trimesh to simulation...")
+        self.gym.add_triangle_mesh(self.sim, self.terrain.vertices.flatten(order='C'), self.terrain.triangles.flatten(order='C'), tm_params)  
+        print("Trimesh added")
+        self.height_samples = torch.tensor(self.terrain.heightsamples).view(self.terrain.tot_rows, self.terrain.tot_cols).to(self.device)
+        self.x_edge_mask = torch.tensor(self.terrain.x_edge_mask).view(self.terrain.tot_rows, self.terrain.tot_cols).to(self.device)
     
