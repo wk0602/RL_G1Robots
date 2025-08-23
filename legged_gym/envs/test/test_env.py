@@ -66,6 +66,27 @@ class TestG1Robot(LeggedRobot):
                 self.hip_indices.append(self.dof_name_to_index[key])
         if len(self.hip_indices) > 0:
             self.hip_indices = torch.tensor(self.hip_indices, device=self.device, dtype=torch.long)
+        # 计算需要冻结的上半身关节掩码（不改变动作维度，便于后续继续训练）
+        self.active_dof_mask = torch.ones(self.num_actions, dtype=torch.bool, device=self.device)
+        if hasattr(self.cfg, 'freeze') and getattr(self.cfg.freeze, 'enable_upper_body', False):
+            substrs = getattr(self.cfg.freeze, 'name_substrings', [])
+            if len(substrs) > 0:
+                for i, name in enumerate(self.dof_names):
+                    for s in substrs:
+                        if s in name:
+                            self.active_dof_mask[i] = False
+                            break
+        # float 版用于数值乘法
+        self.active_dof_mask_f = self.active_dof_mask.float()
+        # 对被冻结的关节提升 PD 增益，增强抱持默认位姿能力
+        if hasattr(self.cfg, 'freeze') and getattr(self.cfg.freeze, 'enable_upper_body', False):
+            kp_scale = float(getattr(self.cfg.freeze, 'kp_scale', 1.0))
+            kd_scale = float(getattr(self.cfg.freeze, 'kd_scale', 1.0))
+            if kp_scale != 1.0 or kd_scale != 1.0:
+                frozen_idx = (~self.active_dof_mask).nonzero(as_tuple=False).flatten()
+                if frozen_idx.numel() > 0:
+                    self.p_gains[frozen_idx] = self.p_gains[frozen_idx] * kp_scale
+                    self.d_gains[frozen_idx] = self.d_gains[frozen_idx] * kd_scale
 
     def update_feet_state(self):
         self.gym.refresh_rigid_body_state_tensor(self.sim)
@@ -90,6 +111,10 @@ class TestG1Robot(LeggedRobot):
     def compute_observations(self):
         """ Computes observations
         """
+        # 对动作进行观测层面的掩码，避免未训练的上半身动作进入观测并影响损失
+        actions_obs = self.actions
+        if hasattr(self, 'active_dof_mask'):
+            actions_obs = self.actions * self.active_dof_mask_f
         sin_phase = torch.sin(2 * np.pi * self.phase ).unsqueeze(1)
         cos_phase = torch.cos(2 * np.pi * self.phase ).unsqueeze(1)
         self.obs_buf = torch.cat((  self.base_ang_vel  * self.obs_scales.ang_vel,
@@ -97,7 +122,7 @@ class TestG1Robot(LeggedRobot):
                                     self.commands[:, :3] * self.commands_scale,
                                     (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,
                                     self.dof_vel * self.obs_scales.dof_vel,
-                                    self.actions,
+                                    actions_obs,
                                     sin_phase,
                                     cos_phase
                                     ),dim=-1)
@@ -107,7 +132,7 @@ class TestG1Robot(LeggedRobot):
                                     self.commands[:, :3] * self.commands_scale,
                                     (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,
                                     self.dof_vel * self.obs_scales.dof_vel,
-                                    self.actions,
+                                    actions_obs,
                                     sin_phase,
                                     cos_phase
                                     ),dim=-1)
@@ -257,4 +282,17 @@ class TestG1Robot(LeggedRobot):
         print("Trimesh added")
         self.height_samples = torch.tensor(self.terrain.heightsamples).view(self.terrain.tot_rows, self.terrain.tot_cols).to(self.device)
         self.x_edge_mask = torch.tensor(self.terrain.x_edge_mask).view(self.terrain.tot_rows, self.terrain.tot_cols).to(self.device)
+        
+    # 覆盖扭矩计算，屏蔽被冻结的上半身动作分量
+    def _compute_torques(self, actions):
+        if hasattr(self, 'active_dof_mask'):
+            actions = actions * self.active_dof_mask_f
+        return super()._compute_torques(actions)
+
+    # 覆盖动作变化惩罚，只对未冻结（下半身）关节计入
+    def _reward_action_rate(self):
+        if hasattr(self, 'active_dof_mask'):
+            diff = (self.last_actions - self.actions) * self.active_dof_mask_f
+            return torch.sum(diff * diff, dim=1)
+        return super()._reward_action_rate()
     

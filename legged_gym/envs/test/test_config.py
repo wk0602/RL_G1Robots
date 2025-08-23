@@ -62,6 +62,18 @@ class TestG1RoughCfg( LeggedRobotCfg ):
         num_actions = 43
         episode_length_s = 60
 
+    # 冻结配置：允许在训练下半身时冻结上半身关节
+    class freeze:
+        enable_upper_body = True
+        # 通过名称子串匹配上半身相关关节（不包含腿部/髋/膝/踝）
+        name_substrings = [
+            'waist_', 'shoulder', 'elbow', 'wrist',
+            'hand_', 'thumb', 'index', 'middle'
+        ]
+        # 对被冻结关节放大 PD 增益，增强抱持姿态能力，避免坍塌
+        kp_scale = 3.0
+        kd_scale = 2.0
+
     # 添加commands配置，让机器人沿着难度递增方向前进
     class commands(LeggedRobotCfg.commands):
         curriculum = False
