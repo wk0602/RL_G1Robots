@@ -15,14 +15,51 @@ class TestG1RoughCfg( LeggedRobotCfg ):
            'right_hip_pitch_joint' : -0.1,                                       
            'right_knee_joint' : 0.3,                                             
            'right_ankle_pitch_joint': -0.2,                              
-           'right_ankle_roll_joint' : 0,       
-           'torso_joint' : 0.
+           'right_ankle_roll_joint' : 0,
+           # torso / waist
+           'waist_yaw_joint': 0.0,
+           'waist_roll_joint': 0.0,
+           'waist_pitch_joint': 0.0,
+           # left arm
+           'left_shoulder_pitch_joint': 0.0,
+           'left_shoulder_roll_joint': 0.0,
+           'left_shoulder_yaw_joint': 0.0,
+           'left_elbow_joint': 0.0,
+           'left_wrist_roll_joint': 0.0,
+           'left_wrist_pitch_joint': 0.0,
+           'left_wrist_yaw_joint': 0.0,
+           # left hand
+           'left_hand_palm_joint': 0.0,  # fixed in URDF but keep 0 if present
+           'left_hand_thumb_0_joint': 0.0,
+           'left_hand_thumb_1_joint': 0.0,
+           'left_hand_thumb_2_joint': 0.0,
+           'left_hand_middle_0_joint': 0.0,
+           'left_hand_middle_1_joint': 0.0,
+           'left_hand_index_0_joint': 0.0,
+           'left_hand_index_1_joint': 0.0,
+           # right arm
+           'right_shoulder_pitch_joint': 0.0,
+           'right_shoulder_roll_joint': 0.0,
+           'right_shoulder_yaw_joint': 0.0,
+           'right_elbow_joint': 0.0,
+           'right_wrist_roll_joint': 0.0,
+           'right_wrist_pitch_joint': 0.0,
+           'right_wrist_yaw_joint': 0.0,
+           # right hand
+           'right_hand_palm_joint': 0.0,  # fixed in URDF but keep 0 if present
+           'right_hand_thumb_0_joint': 0.0,
+           'right_hand_thumb_1_joint': 0.0,
+           'right_hand_thumb_2_joint': 0.0,
+           'right_hand_middle_0_joint': 0.0,
+           'right_hand_middle_1_joint': 0.0,
+           'right_hand_index_0_joint': 0.0,
+           'right_hand_index_1_joint': 0.0,
         }
     
     class env(LeggedRobotCfg.env):
-        num_observations = 47
-        num_privileged_obs = 50
-        num_actions = 12
+        num_observations = 140
+        num_privileged_obs = 143
+        num_actions = 43
         episode_length_s = 60
 
     class terrain(LeggedRobotCfg.terrain):
@@ -80,12 +117,26 @@ class TestG1RoughCfg( LeggedRobotCfg ):
                      'hip_pitch': 100,
                      'knee': 150,
                      'ankle': 40,
+                     'waist': 50,
+                     'shoulder': 60,
+                     'elbow': 40,
+                     'wrist': 10,
+                     'thumb': 5,
+                     'index': 5,
+                     'middle': 5,
                      }  # [N*m/rad]
         damping = {  'hip_yaw': 2,
                      'hip_roll': 2,
                      'hip_pitch': 2,
                      'knee': 4,
                      'ankle': 2,
+                     'waist': 2,
+                     'shoulder': 3,
+                     'elbow': 2,
+                     'wrist': 1,
+                     'thumb': 0.5,
+                     'index': 0.5,
+                     'middle': 0.5,
                      }  # [N*m/rad]  # [N*m*s/rad]
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
@@ -93,7 +144,7 @@ class TestG1RoughCfg( LeggedRobotCfg ):
         decimation = 4
 
     class asset( LeggedRobotCfg.asset ):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1_description/g1_12dof.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1_description/g1_29dof_with_hand.urdf'
         name = "g1"
         foot_name = "ankle_roll"
         penalize_contacts_on = ["hip", "knee"]
@@ -138,7 +189,7 @@ class TestG1RoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
     class runner( LeggedRobotCfgPPO.runner ):
-        policy_class_name = "ActorCriticRecurrent"
-        max_iterations = 100000
+        policy_class_name = "ActorCritic"
+        max_iterations = 50000
         run_name = ''
         experiment_name = 'test_g1'

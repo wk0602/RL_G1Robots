@@ -24,13 +24,20 @@ class TestG1Robot(LeggedRobot):
         self.add_noise = self.cfg.noise.add_noise
         noise_scales = self.cfg.noise.noise_scales
         noise_level = self.cfg.noise.noise_level
+        # [0:3] base ang vel
         noise_vec[:3] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
+        # [3:6] gravity
         noise_vec[3:6] = noise_scales.gravity * noise_level
-        noise_vec[6:9] = 0. # commands
+        # [6:9] commands (no noise)
+        noise_vec[6:9] = 0.
+        # [9 : 9+num_actions] dof_pos
         noise_vec[9:9+self.num_actions] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
+        # [9+na : 9+2na] dof_vel
         noise_vec[9+self.num_actions:9+2*self.num_actions] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
-        noise_vec[9+2*self.num_actions:9+3*self.num_actions] = 0. # previous actions
-        noise_vec[9+3*self.num_actions:9+3*self.num_actions+2] = 0. # sin/cos phase
+        # [9+2na : 9+3na] previous actions (no noise)
+        noise_vec[9+2*self.num_actions:9+3*self.num_actions] = 0.
+        # [9+3na : +2] sin/cos (no noise)
+        noise_vec[9+3*self.num_actions:9+3*self.num_actions+2] = 0.
         
         return noise_vec
 
@@ -47,6 +54,18 @@ class TestG1Robot(LeggedRobot):
     def _init_buffers(self):
         super()._init_buffers()
         self._init_foot()
+        # 缓存关节名映射，便于按名称索引（如奖励计算）
+        self.dof_name_to_index = {name: idx for idx, name in enumerate(self.dof_names)}
+        # 常用：左右髋关节索引（若不存在则忽略）
+        self.hip_indices = []
+        for key in [
+            'left_hip_yaw_joint','left_hip_roll_joint','left_hip_pitch_joint',
+            'right_hip_yaw_joint','right_hip_roll_joint','right_hip_pitch_joint'
+        ]:
+            if key in self.dof_name_to_index:
+                self.hip_indices.append(self.dof_name_to_index[key])
+        if len(self.hip_indices) > 0:
+            self.hip_indices = torch.tensor(self.hip_indices, device=self.device, dtype=torch.long)
 
     def update_feet_state(self):
         self.gym.refresh_rigid_body_state_tensor(self.sim)
@@ -123,7 +142,9 @@ class TestG1Robot(LeggedRobot):
         return torch.sum(penalize, dim=(1,2))
     
     def _reward_hip_pos(self):
-        return torch.sum(torch.square(self.dof_pos[:,[1,2,7,8]]), dim=1)
+        if isinstance(self.hip_indices, list) or self.hip_indices is None or len(self.hip_indices)==0:
+            return torch.sum(torch.square(self.dof_pos[:, :0]), dim=1) * 0.0
+        return torch.sum(torch.square(self.dof_pos[:, self.hip_indices]), dim=1)
     
     def _resample_commands(self, env_ids):
         """ 重写命令重采样函数，确保机器人沿着课程学习方向前进
