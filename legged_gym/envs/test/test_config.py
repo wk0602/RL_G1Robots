@@ -62,26 +62,6 @@ class TestG1RoughCfg( LeggedRobotCfg ):
         num_actions = 43
         episode_length_s = 60
 
-    class terrain(LeggedRobotCfg.terrain):
-        mesh_type = 'heightfield'  # 启用高度场地形，而不是平面
-        curriculum = True  # 启用课程学习
-        # 创建一个明显不同的地形分布 - 90%都是楼梯！
-        terrain_proportions = [0.0, 0.0, 0.7, 0.2, 0.1]  # [平滑斜坡0%, 粗糙斜坡0%, 上楼梯70%, 下楼梯20%, 离散障碍物10%]
-        # 地形参数
-        terrain_length = 8.
-        terrain_width = 8.
-        num_rows = 10  # 增加到10个难度等级，提供更丰富的课程学习
-        num_cols = 15  # 保持地形类型数量
-        max_init_terrain_level = 0  # 强制所有机器人从最简单的地形开始（第0行）
-        # 地形摩擦力设置
-        static_friction = 1.2   # 提高静摩擦力，让楼梯更好抓地
-        dynamic_friction = 1.0  # 动摩擦力保持不变
-        restitution = 0.1       # 稍微增加弹性，减少硬着陆
-        # 测量点设置 - 用于感知地形高度
-        measure_heights = True
-        measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
-        measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
-
     # 添加commands配置，让机器人沿着难度递增方向前进
     class commands(LeggedRobotCfg.commands):
         curriculum = False
@@ -95,8 +75,7 @@ class TestG1RoughCfg( LeggedRobotCfg ):
             lin_vel_x = [0.8, 1.5]   # 沿+X方向前进（难度递增方向），速度0.8-1.5 m/s
             lin_vel_y = [0, 0]  # 允许轻微的左右调整，避免过于僵硬
             ang_vel_yaw = [0, 0] # 允许轻微转向调整，保持前进方向
-            heading = [-3.14, 3.14]  # 保持默认朝向范围（虽然不会使用）
-
+            heading = [-3.14, 3.14]  # 保持默认朝向范围（虽然不会使用
 
     class domain_rand(LeggedRobotCfg.domain_rand):
         randomize_friction = True

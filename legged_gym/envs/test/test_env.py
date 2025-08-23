@@ -239,7 +239,7 @@ class TestG1Robot(LeggedRobot):
     def _create_terrain(self):
         # 使用 challenging_terrain 生成三角网格地形并添加到仿真
         from challenging_terrain.terrain_base import Terrain as ChallengingTerrain
-        
+ 
         self.terrain = ChallengingTerrain(self.num_envs)
         
         tm_params = gymapi.TriangleMeshParams()
