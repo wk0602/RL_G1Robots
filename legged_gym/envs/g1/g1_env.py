@@ -48,6 +48,27 @@ class G1Robot(LeggedRobot):
         self._box_handles.append(box_handle)
         return
     
+    def _reset_box(self, env_ids, randomize=True):
+        # 固定位置：机器人前方1.5米
+        fixed_distance = 1.5
+        
+        # 设置X坐标：机器人前方1.5米（假设机器人面向X轴正方向）
+        self._box_states[env_ids, 0] = self._humanoid_root_states[env_ids, 0] + fixed_distance
+        # 设置Y坐标：与机器人Y坐标相同（正前方）
+        self._box_states[env_ids, 1] = self._humanoid_root_states[env_ids, 1]
+        # 设置Z坐标：箱子底部接触地面
+        self._box_states[env_ids, 2] = self._height_box_size[env_ids] / 2.0
+
+        # 固定旋转：箱子不旋转，保持默认姿态
+        # 创建单位四元数 [1, 0, 0, 0] 表示无旋转
+        identity_quat = torch.tensor([1.0, 0.0, 0.0, 0.0], 
+                                   dtype=self._box_states.dtype, 
+                                   device=self._box_states.device)
+        self._box_states[env_ids, 3:7] = identity_quat
+        
+        # 清零线速度和角速度
+        self._box_states[env_ids, 7:] = 0.0
+    
     def _create_envs(self):
         self._box_handles = []
         sim_device = self.device
@@ -82,6 +103,11 @@ class G1Robot(LeggedRobot):
         contact_force_tensor = gymtorch.wrap_tensor(contact_force_tensor)
         self._box_contact_forces = contact_force_tensor.view(
             self.num_envs, bodies_per_env, 3)[..., self.num_bodies, :]
+    
+    def reset_idx(self, env_ids):
+        super().reset_idx(env_ids)
+        self._reset_box(env_ids)
+        return
     
     def _get_noise_scale_vec(self, cfg):
         noise_vec = torch.zeros_like(self.obs_buf[0])
