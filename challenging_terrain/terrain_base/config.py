@@ -6,12 +6,12 @@ class terrain_config:
         y_range = [-0.2, 0.2]
         
         edge_width_thresh = 0.05
-        horizontal_scale = 0.05 # [m] influence computation time by a lot
+        horizontal_scale = 0.1 # [m] coarser grid to reduce triangles
         horizontal_scale_camera = 0.1
         vertical_scale = 0.005 # [m]
-        border_size = 5 
+        border_size = 3 
         height = [0.02, 0.06]
-        simplify_grid = False
+        simplify_grid = True
         gap_size = [0.02, 0.1]
         stepping_stone_distance = [0.02, 0.08]
         downsampled_scale = 0.075
@@ -29,8 +29,8 @@ class terrain_config:
         terrain_length = 10.
         terrain_width = 4.
         platform_size = 2.5
-        num_rows= 10 # number of terrain rows (levels)  # spreaded is benifitiall !
-        num_cols = 20 # number of terrain cols (types)
+        num_rows= 6 # reduce rows to lower size
+        num_cols = 12 # reduce cols to lower size
 
         num_goals = 10
 

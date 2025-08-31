@@ -24,6 +24,7 @@ class LeggedG1RoughCfg( LeggedRobotCfg ):
         num_privileged_obs = 50
         num_actions = 12
         episode_length_s = 60
+        num_envs = 512
 
     class terrain(LeggedRobotCfg.terrain):
         mesh_type = 'heightfield'  # 启用高度场地形，而不是平面
@@ -123,6 +124,12 @@ class LeggedG1RoughCfg( LeggedRobotCfg ):
             contact_no_vel = -0.2
             feet_swing_height = -20.0
             contact = 0.18
+
+    class sim(LeggedRobotCfg.sim):
+        class physx(LeggedRobotCfg.sim.physx):
+            # 增大全局 GPU 接触对和缓冲区，避免三角网格+多机器人导致的溢出
+            max_gpu_contact_pairs = 2**24
+            default_buffer_size_multiplier = 10
 
 class LeggedG1RoughCfgPPO( LeggedRobotCfgPPO ):
     class policy:

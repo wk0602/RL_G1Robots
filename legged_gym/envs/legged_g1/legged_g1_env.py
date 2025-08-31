@@ -173,47 +173,6 @@ class LeggedG1Robot(LeggedRobot):
                 'average_difficulty': torch.mean(self.terrain_levels.float()).item()
             }
         return None
-    
-    def _get_env_origins(self):
-        """ 重写环境原点设置，确保所有机器人都从最简单的地形开始
-        
-        在课程学习中：
-        - 行索引 i = 0 表示最简单的地形
-        - 行索引 i = num_rows-1 表示最复杂的地形
-        - 我们让所有机器人都从 i = 0 开始，然后沿着 +X 方向前进
-        """
-        if self.terrain is not None:
-            self.custom_origins = True
-            self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
-            
-            # 强制所有机器人从最简单的地形开始（第0行）
-            self.terrain_levels = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
-            
-            # 在不同的地形类型中分布机器人（不同的列）
-            self.terrain_types = torch.div(
-                torch.arange(self.num_envs, device=self.device), 
-                (self.num_envs / self.terrain.cfg.num_cols), 
-                rounding_mode='floor'
-            ).to(torch.long)
-            
-            self.max_terrain_level = self.terrain.cfg.num_rows
-            self.terrain_origins = torch.from_numpy(self.terrain.env_origins).to(self.device).to(torch.float)
-            
-            # 设置环境原点坐标
-            self.env_origins[:, 0] = self.terrain_origins[self.terrain_levels, self.terrain_types, 0]
-            self.env_origins[:, 1] = self.terrain_origins[self.terrain_levels, self.terrain_types, 1] 
-            self.env_origins[:, 2] = self.terrain_origins[self.terrain_levels, self.terrain_types, 2]
-            
-            print(f"✅ 所有 {self.num_envs} 个机器人都从最简单的地形开始 (terrain_level=0)")
-            print(f" 地形类型分布: {torch.bincount(self.terrain_types)}")
-        else:
-            # 如果没有地形，使用默认的网格布局
-            self.custom_origins = False
-            self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
-            for i in range(self.num_envs):
-                self.env_origins[i, 0] = (i % self.num_envs_per_row) * self.cfg.env.env_spacing
-                self.env_origins[i, 1] = (i // self.num_envs_per_row) * self.cfg.env.env_spacing
-                self.env_origins[i, 2] = 0.
 
     def _create_terrain(self):
         # 使用 challenging_terrain 生成三角网格地形并添加到仿真

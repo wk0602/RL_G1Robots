@@ -3,3 +3,4 @@ from .task_registry import task_registry
 from .logger import Logger
 from .math import *
 from .terrain import Terrain
+from .box import _load_box_asset, _build_box

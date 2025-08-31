@@ -7,7 +7,6 @@ import torch
 
 # Base class for RL tasks
 class BaseTask():
-
     def __init__(self, cfg, sim_params, physics_engine, sim_device, headless):
         # 创建仿真器对象
         self.gym = gymapi.acquire_gym()
@@ -43,6 +42,7 @@ class BaseTask():
         torch._C._jit_set_profiling_executor(False)
 
         # allocate buffers
+        # 8.31 这些不涉及每个环境的物体数目，不用管
         self.obs_buf = torch.zeros(self.num_envs, self.num_obs, device=self.device, dtype=torch.float)
         self.rew_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self.reset_buf = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
@@ -52,8 +52,6 @@ class BaseTask():
             self.privileged_obs_buf = torch.zeros(self.num_envs, self.num_privileged_obs, device=self.device, dtype=torch.float)
         else: 
             self.privileged_obs_buf = None
-            # self.num_privileged_obs = self.num_obs
-
         self.extras = {}
 
         # create envs, sim and viewer
