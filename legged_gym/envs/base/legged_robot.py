@@ -100,10 +100,6 @@ class LeggedRobot(BaseTask):
         self.compute_reward()
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
-        
-        # 可选扰动
-        if self.cfg.domain_rand.push_robots:
-            self._push_robots()
 
         self.compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
 
@@ -129,6 +125,21 @@ class LeggedRobot(BaseTask):
         # reset robot states
         self._reset_root_states(env_ids)
         self._reset_dofs(env_ids)
+        self._resample_commands(env_ids)
+
+        # 刷新关节状态张量（位置、速度）    
+        self.gym.refresh_dof_state_tensor(self.sim)
+        # 刷新根节点状态张量（位置、旋转、速度）
+        self.gym.refresh_actor_root_state_tensor(self.sim)
+        # 刷新刚体状态张量（各身体部位的位置、旋转、速度）
+        self.gym.refresh_rigid_body_state_tensor(self.sim)
+
+        # 刷新力传感器张量（脚部受力）
+        self.gym.refresh_force_sensor_tensor(self.sim)
+        # 刷新关节受力张量
+        self.gym.refresh_dof_force_tensor(self.sim)
+        # 刷新碰撞力张量（各部位与地面的碰撞力）
+        self.gym.refresh_net_contact_force_tensor(self.sim)
 
         # reset buffers
         self.actions[env_ids] = 0.
@@ -284,10 +295,10 @@ class LeggedRobot(BaseTask):
 
     # 重置关节位置和速度
     def _reset_dofs(self, env_ids):
-        # 位置随机选择在0.5:1.5倍默认位置之间
-        self.dof_pos[env_ids] = self.default_dof_pos * torch_rand_float(0.5, 1.5, (len(env_ids), self.num_dof), device=self.device)
-        # 速度置0
-        self.dof_vel[env_ids] = 0.
+        # 重置关节位置为初始位置
+        self.dof_pos[env_ids] = self.default_dof_pos
+        # 重置关节速度为初始速度（全0）
+        self.dof_vel[env_ids] = self._initial_dof_vel[env_ids]
 
         env_ids_int32 = self._humanoid_actor_ids[env_ids]
         self.gym.set_dof_state_tensor_indexed(self.sim,
@@ -298,31 +309,12 @@ class LeggedRobot(BaseTask):
     def _reset_root_states(self, env_ids):
         # 重置机器人根节点（躯干）状态为初始状态
         self._humanoid_root_states[env_ids] = self._initial_humanoid_root_states[env_ids]
-        # 重置关节位置为初始位置（全0）
-        self.dof_pos[env_ids] = self._initial_dof_pos[env_ids]
-        # 重置关节速度为初始速度（全0）
-        self.dof_vel[env_ids] = self._initial_dof_vel[env_ids]
-       
+
         env_ids_int32 = self._humanoid_actor_ids[env_ids]
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self.root_states),
                                                      gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
 
-    # 模拟突发外力，推动机器人
-    def _push_robots(self):
-        env_ids = torch.arange(self.num_envs, device=self.device)
-        push_env_ids = env_ids[self.episode_length_buf[env_ids] % int(self.cfg.domain_rand.push_interval) == 0]
-        if len(push_env_ids) == 0:
-            return
-        max_vel = self.cfg.domain_rand.max_push_vel_xy
-        self._humanoid_root_states[:, 7:9] = torch_rand_float(-max_vel, max_vel, (self.num_envs, 2), device=self.device) # lin vel x/y
-        
-        env_ids_int32 = push_env_ids.to(dtype=torch.int32)
-        self.gym.set_actor_root_state_tensor_indexed(self.sim,
-                                                    gymtorch.unwrap_tensor(self.root_states),
-                                                    gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
-
-   
     # 课程学习
     def update_command_curriculum(self, env_ids):
         # If the tracking reward is above 80% of the maximum, increase the range of commands
@@ -365,7 +357,6 @@ class LeggedRobot(BaseTask):
         self.gym.refresh_net_contact_force_tensor(self.sim)
         self.gym.refresh_rigid_body_state_tensor(self.sim)
 
-
         # create some wrapper tensors for different slices
         self.root_states = gymtorch.wrap_tensor(actor_root_state)
         num_actors = self.get_num_actors_per_env()
@@ -375,6 +366,7 @@ class LeggedRobot(BaseTask):
         self._initial_humanoid_root_states = self._humanoid_root_states.clone()
         # 将初始根状态的线速度和角速度设为0（静止开始）
         self._initial_humanoid_root_states[:, 7:13] = 0
+        
         # 每个环境中机器人的ID
         self._humanoid_actor_ids = num_actors * torch.arange(self.num_envs, device=self.device, dtype=torch.int32)
         
@@ -424,7 +416,6 @@ class LeggedRobot(BaseTask):
         self.base_lin_vel = torch.zeros(self.num_envs, 3, dtype=torch.float, device=self.device, requires_grad=False)
         self.base_ang_vel = torch.zeros(self.num_envs, 3, dtype=torch.float, device=self.device, requires_grad=False)
         self.projected_gravity = torch.zeros(self.num_envs, 3, dtype=torch.float, device=self.device, requires_grad=False)
-      
 
         # joint positions offsets and PD gains
         self.default_dof_pos = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
@@ -444,7 +435,6 @@ class LeggedRobot(BaseTask):
                 if self.cfg.control.control_type in ["P", "V"]:
                     print(f"PD gain of joint {name} were not defined, setting them to zero")
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
-
 
     # 准备奖励函数
     def _prepare_reward_function(self):
@@ -561,12 +551,11 @@ class LeggedRobot(BaseTask):
             pos = self.env_origins[i].clone()
             pos[:2] += torch_rand_float(-1., 1., (2,1), device=self.device).squeeze(1)
             start_pose.p = gymapi.Vec3(*pos)
+        
+            rigid_shape_props = self._process_rigid_shape_props(rigid_shape_props_asset, i)
+            self.gym.set_asset_rigid_shape_properties(robot_asset, rigid_shape_props)  
 
             self._build_env(i, env_handle, robot_asset, start_pose, dof_props_asset)
-                
-            rigid_shape_props = self._process_rigid_shape_props(rigid_shape_props_asset, i)
-            self.gym.set_asset_rigid_shape_properties(robot_asset, rigid_shape_props)
-            
 
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(feet_names)):
@@ -581,10 +570,7 @@ class LeggedRobot(BaseTask):
             self.termination_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], termination_contact_names[i])
 
     def _build_env(self, i, env_handle, robot_asset, start_pose, dof_props_asset):
-        # 设置所有机器人在同一碰撞组以启用机器人间碰撞
-        collision_group = 0  # 所有机器人在同一组
-        collision_filter = 0  # 不过滤碰撞
-        actor_handle = self.gym.create_actor(env_handle, robot_asset, start_pose, self.cfg.asset.name, collision_group, self.cfg.asset.self_collisions, collision_filter)
+        actor_handle = self.gym.create_actor(env_handle, robot_asset, start_pose, self.cfg.asset.name, i, self.cfg.asset.self_collisions, 0)
         dof_props = self._process_dof_props(dof_props_asset, i)
         self.gym.set_actor_dof_properties(env_handle, actor_handle, dof_props)
         body_props = self.gym.get_actor_rigid_body_properties(env_handle, actor_handle)
@@ -597,38 +583,27 @@ class LeggedRobot(BaseTask):
 
     # 设置环境原点
     def _get_env_origins(self):
-        if self.terrain is not None:
-            self.custom_origins = True
-            self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
-            # put robots at the origins defined by the terrain
-            max_init_level = self.cfg.terrain.max_init_terrain_level
-            if not self.cfg.terrain.curriculum: max_init_level = self.cfg.terrain.num_rows - 1
-            self.terrain_levels = torch.randint(0, max_init_level+1, (self.num_envs,), device=self.device)
-            self.terrain_types = torch.div(torch.arange(self.num_envs, device=self.device), (self.num_envs/self.cfg.terrain.num_cols), rounding_mode='floor').to(torch.long)
-            self.max_terrain_level = self.cfg.terrain.num_rows
-            self.terrain_origins = torch.from_numpy(self.terrain.env_origins).to(self.device).to(torch.float)
-            self.env_origins[:, 0] = self.terrain_origins[self.terrain_levels, self.terrain_types, 0]
-            self.env_origins[:, 1] = self.terrain_origins[self.terrain_levels, self.terrain_types, 1]
-            self.env_origins[:, 2] = self.terrain_origins[self.terrain_levels, self.terrain_types, 2]
-        else:
-            self.custom_origins = False
-            self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
-            # create a grid of robots
-            num_cols = np.floor(np.sqrt(self.num_envs))
-            num_rows = np.ceil(self.num_envs / num_cols)
-            xx, yy = torch.meshgrid(torch.arange(num_rows), torch.arange(num_cols))
-            spacing = self.cfg.env.env_spacing
-            self.env_origins[:, 0] = spacing * xx.flatten()[:self.num_envs]
-            self.env_origins[:, 1] = spacing * yy.flatten()[:self.num_envs]
-            self.env_origins[:, 2] = 0.
+        """ Sets environment origins. On rough terrain the origins are defined by the terrain platforms.
+            Otherwise create a grid.
+        """
+        
+        self.custom_origins = False
+        self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
+        # create a grid of robots
+        num_cols = np.floor(np.sqrt(self.num_envs))
+        num_rows = np.ceil(self.num_envs / num_cols)
+        xx, yy = torch.meshgrid(torch.arange(num_rows), torch.arange(num_cols))
+        spacing = self.cfg.env.env_spacing
+        self.env_origins[:, 0] = spacing * xx.flatten()[:self.num_envs]
+        self.env_origins[:, 1] = spacing * yy.flatten()[:self.num_envs]
+        self.env_origins[:, 2] = 0.
 
     # 解析配置
     def _parse_cfg(self, cfg):
         self.dt = self.cfg.control.decimation * self.sim_params.dt
         self.obs_scales = self.cfg.normalization.obs_scales
         self.reward_scales = class_to_dict(self.cfg.rewards.scales)
-        self.command_ranges = class_to_dict(self.cfg.commands.ranges)
-     
+        self.command_ranges = class_to_dict(self.cfg.commands.ranges) 
 
         self.max_episode_length_s = self.cfg.env.episode_length_s
         self.max_episode_length = np.ceil(self.max_episode_length_s / self.dt)

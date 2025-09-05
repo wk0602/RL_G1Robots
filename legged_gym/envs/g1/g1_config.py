@@ -2,7 +2,7 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 
 class G1RoughCfg( LeggedRobotCfg ):
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 0.8] # x,y,z [m]
+        pos = [0.0, 0.0, 1.2] # x,y,z [m] - 增加初始高度避免从地下钻出
         default_joint_angles = { # = target angles [rad] when action = 0.0
            'left_hip_yaw_joint' : 0. ,   
            'left_hip_roll_joint' : 0,               

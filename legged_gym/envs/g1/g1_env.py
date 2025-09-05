@@ -70,19 +70,21 @@ class G1Robot(LeggedRobot):
         self._box_states[env_ids, 7:] = 0.0
     
     def _create_envs(self):
+        """
         self._box_handles = []
         sim_device = self.device
         self._width_box_size = torch.zeros(self.num_envs).to(sim_device)
         self._length_box_size = torch.zeros(self.num_envs).to(sim_device)
         self._height_box_size = torch.zeros(self.num_envs).to(sim_device)
         self._load_box_asset()
+        """
 
         super()._create_envs()
         return
     
     def _build_env(self, i, env_handle, robot_asset, start_pose, dof_props_asset):
         super()._build_env(i, env_handle, robot_asset, start_pose, dof_props_asset)
-        self._build_box(i, env_handle)
+        # self._build_box(i, env_handle)
         return
 
     def _build_box_tensors(self):
@@ -106,7 +108,7 @@ class G1Robot(LeggedRobot):
     
     def reset_idx(self, env_ids):
         super().reset_idx(env_ids)
-        self._reset_box(env_ids)
+        # self._reset_box(env_ids)
         return
     
     def _get_noise_scale_vec(self, cfg):
@@ -137,7 +139,7 @@ class G1Robot(LeggedRobot):
     def _init_buffers(self):
         super()._init_buffers()
         self._init_foot()
-        self._build_box_tensors()
+        # self._build_box_tensors()
 
     def update_feet_state(self):
         self.gym.refresh_rigid_body_state_tensor(self.sim)
