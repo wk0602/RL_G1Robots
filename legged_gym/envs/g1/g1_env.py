@@ -4,6 +4,7 @@ from isaacgym.torch_utils import *
 from isaacgym import gymtorch, gymapi, gymutil
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg
 import torch
+import numpy as np
 
 class G1Robot(LeggedRobot):
     def __init__(self, cfg: LeggedRobotCfg, sim_params, physics_engine, sim_device, headless):
