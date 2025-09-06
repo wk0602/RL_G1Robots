@@ -2,42 +2,46 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 
 class G1RoughCfg( LeggedRobotCfg ):
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 0.8]
+        pos = [0.0, 0.0, 1]
         default_joint_angles = { # = target angles [rad] when action = 0.0
-           # 腿（左）
-           'left_hip_yaw_joint' : 0.0,
-           'left_hip_roll_joint' : 0.0,
-           'left_hip_pitch_joint' : -0.1,
-           'left_knee_joint' : 0.3,
-           'left_ankle_pitch_joint' : -0.2,
-           'left_ankle_roll_joint' : 0.0,
-           # 腿（右）
-           'right_hip_yaw_joint' : 0.0,
-           'right_hip_roll_joint' : 0.0,
-           'right_hip_pitch_joint' : -0.1,
-           'right_knee_joint' : 0.3,
-           'right_ankle_pitch_joint': -0.2,
-           'right_ankle_roll_joint' : 0.0,
+           'left_hip_yaw_joint' : 0. ,   
+           'left_hip_roll_joint' : 0,               
+           'left_hip_pitch_joint' : -0.1,         
+           'left_knee_joint' : 0.3,       
+           'left_ankle_pitch_joint' : -0.2,     
+           'left_ankle_roll_joint' : 0,     
+           'right_hip_yaw_joint' : 0., 
+           'right_hip_roll_joint' : 0, 
+           'right_hip_pitch_joint' : -0.1,                                       
+           'right_knee_joint' : 0.3,                                             
+           'right_ankle_pitch_joint': -0.2,                              
+           'right_ankle_roll_joint' : 0,       
            # 腰
            'waist_yaw_joint' : 0.0,
+           'waist_roll_joint' : 0.0,
+           'waist_pitch_joint' : 0,
            # 左臂
-           'left_shoulder_pitch_joint' : 0.0,
+           'left_shoulder_pitch_joint' : 0,
            'left_shoulder_roll_joint' : 0.0,
            'left_shoulder_yaw_joint' : 0.0,
-           'left_elbow_joint' : 0.0,
+           'left_elbow_joint' : 0,
            'left_wrist_roll_joint' : 0.0,
+           'left_wrist_pitch_joint' : 0.0,
+           'left_wrist_yaw_joint' : 0.0,
            # 右臂
-           'right_shoulder_pitch_joint' : 0.0,
+           'right_shoulder_pitch_joint' : 0,
            'right_shoulder_roll_joint' : 0.0,
            'right_shoulder_yaw_joint' : 0.0,
-           'right_elbow_joint' : 0.0,
+           'right_elbow_joint' : 0,
            'right_wrist_roll_joint' : 0.0,
+           'right_wrist_pitch_joint' : 0.0,
+           'right_wrist_yaw_joint' : 0.0,
         }
     
     class env(LeggedRobotCfg.env):
-        num_observations = 80
-        num_privileged_obs = 83
-        num_actions = 23
+        num_observations = 98
+        num_privileged_obs = 101
+        num_actions = 29
 
 
     class domain_rand(LeggedRobotCfg.domain_rand):
@@ -80,7 +84,7 @@ class G1RoughCfg( LeggedRobotCfg ):
         decimation = 4
 
     class asset( LeggedRobotCfg.asset ):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1_description/g1_23dof.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1_description/g1_29dof.urdf'
         name = "g1"
         foot_name = "ankle_roll"
         penalize_contacts_on = ["hip", "knee"]
@@ -125,7 +129,7 @@ class G1RoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
     class runner( LeggedRobotCfgPPO.runner ):
-        policy_class_name = "ActorCriticRecurrent"
+        policy_class_name = "ActorCritic"
         max_iterations = 10000
         run_name = ''
         experiment_name = 'g1'
