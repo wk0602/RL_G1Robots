@@ -24,7 +24,7 @@ class G1Robot(LeggedRobot):
 
         for env_id in range(self.num_envs):
             asset_options = gymapi.AssetOptions()
-            asset_options.density = 50.0
+            asset_options.density = 5.0
             self.asset_density[env_id] = asset_options.density
 
             self._box_asset.append(self.gym.create_box(
@@ -62,30 +62,38 @@ class G1Robot(LeggedRobot):
 
         # 固定旋转：箱子不旋转，保持默认姿态
         # 创建单位四元数 [1, 0, 0, 0] 表示无旋转
-        identity_quat = torch.tensor([1.0, 0.0, 0.0, 0.0], 
-                                   dtype=self._box_states.dtype, 
-                                   device=self._box_states.device)
-        self._box_states[env_ids, 3:7] = identity_quat
+        identity_quat = torch.tensor([1.0, 0.0, 0.0, 0.0],
+                                     dtype=self._box_states.dtype,
+                                     device=self._box_states.device)
+        self._box_states[env_ids, 3:7] = identity_quat.unsqueeze(0).expand(len(env_ids), 4)
         
         # 清零线速度和角速度
         self._box_states[env_ids, 7:] = 0.0
+
+        # 将更新后的 box 根状态写回仿真器
+        if isinstance(env_ids, torch.Tensor) and env_ids.numel() > 0:
+            box_ids_int32 = self._box_actor_ids[env_ids]
+            self.gym.set_actor_root_state_tensor_indexed(
+                self.sim,
+                gymtorch.unwrap_tensor(self.root_states),
+                gymtorch.unwrap_tensor(box_ids_int32),
+                len(box_ids_int32)
+            )
     
     def _create_envs(self):
-        """
         self._box_handles = []
         sim_device = self.device
         self._width_box_size = torch.zeros(self.num_envs).to(sim_device)
         self._length_box_size = torch.zeros(self.num_envs).to(sim_device)
         self._height_box_size = torch.zeros(self.num_envs).to(sim_device)
         self._load_box_asset()
-        """
 
         super()._create_envs()
         return
     
     def _build_env(self, i, env_handle, robot_asset, start_pose, dof_props_asset):
         super()._build_env(i, env_handle, robot_asset, start_pose, dof_props_asset)
-        # self._build_box(i, env_handle)
+        self._build_box(i, env_handle)
         return
 
     def _build_box_tensors(self):
@@ -109,7 +117,7 @@ class G1Robot(LeggedRobot):
     
     def reset_idx(self, env_ids):
         super().reset_idx(env_ids)
-        # self._reset_box(env_ids)
+        self._reset_box(env_ids)
         return
     
     def _get_noise_scale_vec(self, cfg):
@@ -140,7 +148,7 @@ class G1Robot(LeggedRobot):
     def _init_buffers(self):
         super()._init_buffers()
         self._init_foot()
-        # self._build_box_tensors()
+        self._build_box_tensors()
 
     def update_feet_state(self):
         self.gym.refresh_rigid_body_state_tensor(self.sim)

@@ -548,8 +548,8 @@ class LeggedRobot(BaseTask):
         for i in range(self.num_envs):
             # create env instance
             env_handle = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(self.num_envs)))
+            # 将机器人放置在 env_origins 网格位置（无随机抖动），确保严格方阵
             pos = self.env_origins[i].clone()
-            pos[:2] += torch_rand_float(-1., 1., (2,1), device=self.device).squeeze(1)
             start_pose.p = gymapi.Vec3(*pos)
         
             rigid_shape_props = self._process_rigid_shape_props(rigid_shape_props_asset, i)
