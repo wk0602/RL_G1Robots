@@ -307,8 +307,15 @@ class LeggedRobot(BaseTask):
     
     # 重置根状态
     def _reset_root_states(self, env_ids):
-        # 重置机器人根节点（躯干）状态为初始状态
-        self._humanoid_root_states[env_ids] = self._initial_humanoid_root_states[env_ids]
+        if self.custom_origins:
+            self.root_states[env_ids] = self.base_init_state
+            self.root_states[env_ids, :3] += self.env_origins[env_ids]
+            self.root_states[env_ids, :2] += torch_rand_float(-1., 1., (len(env_ids), 2), device=self.device) # xy position within 1m of the center
+        else:
+            self.root_states[env_ids] = self.base_init_state
+            self.root_states[env_ids, :3] += self.env_origins[env_ids]
+        # base velocities
+        self.root_states[env_ids, 7:13] = torch_rand_float(-0.5, 0.5, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
 
         env_ids_int32 = self._humanoid_actor_ids[env_ids]
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
@@ -548,8 +555,8 @@ class LeggedRobot(BaseTask):
         for i in range(self.num_envs):
             # create env instance
             env_handle = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(self.num_envs)))
-            # 将机器人放置在 env_origins 网格位置（无随机抖动），确保严格方阵
             pos = self.env_origins[i].clone()
+            pos[:2] += torch_rand_float(-1., 1., (2,1), device=self.device).squeeze(1)
             start_pose.p = gymapi.Vec3(*pos)
         
             rigid_shape_props = self._process_rigid_shape_props(rigid_shape_props_asset, i)

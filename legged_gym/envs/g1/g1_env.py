@@ -4,7 +4,6 @@ from isaacgym.torch_utils import *
 from isaacgym import gymtorch, gymapi, gymutil
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg
 import torch
-import numpy as np
 
 class G1Robot(LeggedRobot):
     def __init__(self, cfg: LeggedRobotCfg, sim_params, physics_engine, sim_device, headless):
@@ -70,7 +69,6 @@ class G1Robot(LeggedRobot):
         # 清零线速度和角速度
         self._box_states[env_ids, 7:] = 0.0
 
-        # 将更新后的 box 根状态写回仿真器
         if isinstance(env_ids, torch.Tensor) and env_ids.numel() > 0:
             box_ids_int32 = self._box_actor_ids[env_ids]
             self.gym.set_actor_root_state_tensor_indexed(

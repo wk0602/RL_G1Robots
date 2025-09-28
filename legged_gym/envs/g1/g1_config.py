@@ -2,7 +2,7 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 
 class G1RoughCfg( LeggedRobotCfg ):
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 1]
+        pos = [0.0, 0.0, 0.8] # x,y,z [m]
         default_joint_angles = { # = target angles [rad] when action = 0.0
            'left_hip_yaw_joint' : 0. ,   
            'left_hip_roll_joint' : 0,               
@@ -16,32 +16,13 @@ class G1RoughCfg( LeggedRobotCfg ):
            'right_knee_joint' : 0.3,                                             
            'right_ankle_pitch_joint': -0.2,                              
            'right_ankle_roll_joint' : 0,       
-           # 腰
-           'waist_yaw_joint' : 0.0,
-           'waist_roll_joint' : 0.0,
-           'waist_pitch_joint' : 0,
-           # 左臂
-           'left_shoulder_pitch_joint' : 0,
-           'left_shoulder_roll_joint' : 0.0,
-           'left_shoulder_yaw_joint' : 0.0,
-           'left_elbow_joint' : 0,
-           'left_wrist_roll_joint' : 0.0,
-           'left_wrist_pitch_joint' : 0.0,
-           'left_wrist_yaw_joint' : 0.0,
-           # 右臂
-           'right_shoulder_pitch_joint' : 0,
-           'right_shoulder_roll_joint' : 0.0,
-           'right_shoulder_yaw_joint' : 0.0,
-           'right_elbow_joint' : 0,
-           'right_wrist_roll_joint' : 0.0,
-           'right_wrist_pitch_joint' : 0.0,
-           'right_wrist_yaw_joint' : 0.0,
+           'torso_joint' : 0.
         }
     
     class env(LeggedRobotCfg.env):
-        num_observations = 98
-        num_privileged_obs = 101
-        num_actions = 29
+        num_observations = 47
+        num_privileged_obs = 50
+        num_actions = 12
 
 
     class domain_rand(LeggedRobotCfg.domain_rand):
@@ -63,20 +44,12 @@ class G1RoughCfg( LeggedRobotCfg ):
                      'hip_pitch': 100,
                      'knee': 150,
                      'ankle': 40,
-                     'waist': 40,
-                     'shoulder': 25,
-                     'elbow': 25,
-                     'wrist': 15,
                      }  # [N*m/rad]
         damping = {  'hip_yaw': 2,
                      'hip_roll': 2,
                      'hip_pitch': 2,
                      'knee': 4,
                      'ankle': 2,
-                     'waist': 2,
-                     'shoulder': 2,
-                     'elbow': 2,
-                     'wrist': 1.5,
                      }  # [N*m/rad]  # [N*m*s/rad]
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
@@ -84,7 +57,7 @@ class G1RoughCfg( LeggedRobotCfg ):
         decimation = 4
 
     class asset( LeggedRobotCfg.asset ):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1_description/g1_29dof.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1_description/g1_12dof.urdf'
         name = "g1"
         foot_name = "ankle_roll"
         penalize_contacts_on = ["hip", "knee"]
@@ -129,7 +102,7 @@ class G1RoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
     class runner( LeggedRobotCfgPPO.runner ):
-        policy_class_name = "ActorCritic"
+        policy_class_name = "ActorCriticRecurrent"
         max_iterations = 10000
         run_name = ''
         experiment_name = 'g1'
