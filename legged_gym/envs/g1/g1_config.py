@@ -23,6 +23,30 @@ class G1RoughCfg( LeggedRobotCfg ):
         num_observations = 47
         num_privileged_obs = 50
         num_actions = 12
+    
+    # 命令配置：控制机器人的运动方向
+    class commands(LeggedRobotCfg.commands):
+        # 课程学习开关（可选）
+        curriculum = False
+        # 命令重新采样时间（秒）
+        resampling_time = 10.
+        # 是否使用朝向命令模式
+        heading_command = False
+        
+        # 命令范围：决定机器人的运动模式
+        class ranges:
+            # X方向线速度范围：设置为[0.5, 1.5]表示只向前走，不后退
+            # 如果你想让机器人以固定速度前进，可以设置为[1.0, 1.0]
+            lin_vel_x = [0.5, 1.5]  # 只向前走，速度0.5-1.5 m/s
+            
+            # Y方向线速度范围：设置为[0.0, 0.0]表示不允许左右平移
+            lin_vel_y = [0.0, 0.0]  # 不允许左右移动
+            
+            # Yaw角速度范围：设置为[0.0, 0.0]表示不允许转向
+            ang_vel_yaw = [0.0, 0.0]  # 不允许转向
+            
+            # 朝向角范围（仅在heading_command=True时使用）
+            heading = [0.0, 0.0]  # 保持朝向
 
 
     class domain_rand(LeggedRobotCfg.domain_rand):

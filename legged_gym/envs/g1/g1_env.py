@@ -118,6 +118,39 @@ class G1Robot(LeggedRobot):
         self._reset_box(env_ids)
         return
     
+    def _reset_root_states(self, env_ids):
+        """重写根状态重置方法，在测试模式下禁用随机扰动"""
+        # 获取正确的机器人actor索引
+        env_ids_int32 = self._humanoid_actor_ids[env_ids]
+        
+        if self.custom_origins:
+            # 使用actor索引设置root_states
+            self.root_states[env_ids_int32] = self.base_init_state
+            self.root_states[env_ids_int32, :3] += self.env_origins[env_ids]
+            # 只在训练模式下添加位置随机扰动
+            if not self.cfg.env.test:
+                self.root_states[env_ids_int32, :2] += torch_rand_float(-1., 1., (len(env_ids), 2), device=self.device)
+        else:
+            # 使用actor索引设置root_states
+            self.root_states[env_ids_int32] = self.base_init_state
+            self.root_states[env_ids_int32, :3] += self.env_origins[env_ids]
+        
+        # 只在训练模式下添加初始速度随机扰动
+        if not self.cfg.env.test:
+            # 训练时：给随机初始速度，提高鲁棒性
+            self.root_states[env_ids_int32, 7:13] = torch_rand_float(-0.5, 0.5, (len(env_ids), 6), device=self.device)
+        else:
+            # 测试时：从完美静止状态开始
+            self.root_states[env_ids_int32, 7:13] = 0.0
+        
+        # 应用重置到仿真器
+        self.gym.set_actor_root_state_tensor_indexed(
+            self.sim,
+            gymtorch.unwrap_tensor(self.root_states),
+            gymtorch.unwrap_tensor(env_ids_int32),
+            len(env_ids_int32)
+        )
+    
     def _get_noise_scale_vec(self, cfg):
         noise_vec = torch.zeros_like(self.obs_buf[0])
         self.add_noise = self.cfg.noise.add_noise
